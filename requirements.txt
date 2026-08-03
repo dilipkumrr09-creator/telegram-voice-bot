@@ -1,3 +1,3 @@
-python-telegram-bot
-edge-tts
-langdetect
+python-telegram-bot==22.2
+edge-tts==7.2.8
+langdetect==1.0.9
