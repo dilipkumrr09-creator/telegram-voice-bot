@@ -1,5 +1,5 @@
 flask
-requests
-deep-translator
+python-telegram-bot
 edge-tts
+deep-translator
 static-ffmpeg
