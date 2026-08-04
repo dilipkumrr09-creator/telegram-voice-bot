@@ -20,7 +20,7 @@ def home():
   return "Bot is running 24/7!"
 
 
-TOKEN = "8966768712:AAGPEtTSXQJqjcffWal6GjtiwfmjuY6uAo"
+TOKEN = "8966768712:AAHQE61_ogS6D2m9JHwC46Iv0HEx6qrwTqU"
 API_URL = f"https://api.telegram.org/bot{TOKEN}/"
 
 
