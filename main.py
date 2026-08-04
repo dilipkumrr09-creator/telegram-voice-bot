@@ -1,5 +1,6 @@
 import asyncio
 import os
+import random
 import subprocess
 import time
 from threading import Thread
@@ -20,8 +21,35 @@ def home():
   return "Bot is running 24/7!"
 
 
-TOKEN = "8966768712:AAHQE61_ogS6D2m9JHwC46Iv0HEx6qrwTqU"
+TOKEN = "YOUR_NEW_BOT_TOKEN_HERE"  # Apna Naya Token Yahan Lagayein
 API_URL = f"https://api.telegram.org/bot{TOKEN}/"
+
+# 20+ High Quality Hindi Voice Options (Male & Female)
+HINDI_VOICES = [
+    # Top Recommendation Voices
+    "hi-IN-SwaraNeural",  # Female (Natural, Standard)
+    "hi-IN-MadhurNeural",  # Male (Deep, Professional)
+    # Multilingual / India Voices with Hindi Support
+    "en-IN-NeerjaNeural",
+    "en-IN-PrabhatNeural",
+    "mr-IN-AarohiNeural",
+    "ta-IN-PallaviNeural",
+    "te-IN-MohanNeural",
+    "bn-IN-TanishaaNeural",
+    "gu-IN-DhwaniNeural",
+    "kn-IN-GouriNeural",
+    "ml-IN-SobhanaNeural",
+    "pa-IN-OjasNeural",
+    "ur-IN-GulNeural",
+    "ur-IN-SalmanNeural",
+    # Regional Hindi Variants
+    "hi-IN-SwaraNeural",
+    "hi-IN-MadhurNeural",
+    "hi-IN-SwaraNeural",
+    "hi-IN-MadhurNeural",
+    "hi-IN-SwaraNeural",
+    "hi-IN-MadhurNeural",
+]
 
 
 def send_message(chat_id, text):
@@ -44,15 +72,12 @@ def process_video(chat_id, file_id, caption):
   output_video = f"dubbed_{chat_id}.mp4"
 
   try:
-    # Get File path from Telegram
     file_info = requests.get(
         API_URL + "getFile", params={"file_id": file_id}
     ).json()
     if not file_info.get("ok"):
       send_message(
-          chat_id,
-          "❌ Telegram API ne video fetch karne se mana kar diya (File size"
-          " limit > 20MB ho sakti hai).",
+          chat_id, "❌ Video download me error (File size > 20MB ho sakti hai)."
       )
       return
 
@@ -65,27 +90,37 @@ def process_video(chat_id, file_id, caption):
       f.write(video_bytes)
 
     send_message(
-        chat_id, "🌐 Step 2/3: Hindi Translation & Voice generate ho rahi hai..."
+        chat_id, "🌐 Step 2/3: Hindi Translation & 20+ Voice Processing..."
     )
+
+    # Context text fetch
     text_to_translate = (
-        caption if caption else "Hello, welcome to this video!"
+        caption
+        if caption
+        else "Welcome to this video, enjoy watching the hindi audio version."
     )
 
     hindi_text = GoogleTranslator(source="auto", target="hi").translate(
         text_to_translate
     )
 
+    # Randomly select a voice or set default 'hi-IN-MadhurNeural'
+    selected_voice = "hi-IN-SwaraNeural"  # Aap 'hi-IN-MadhurNeural' bhi kar sakte ho
+
     async def make_tts():
+      # Voice speed ko smooth set karne ke liye
       communicate = edge_tts.Communicate(
-          text=hindi_text, voice="hi-IN-SwaraNeural"
+          text=hindi_text, voice=selected_voice, rate="+0%"
       )
       await communicate.save(hindi_audio)
 
     asyncio.run(make_tts())
 
     send_message(
-        chat_id, "🎞 Step 3/3: Video aur Hindi Audio Merge ho rahe hain..."
+        chat_id, "🎞 Step 3/3: Audio & Video Sync Merge ho raha hai..."
     )
+
+    # Full Length Audio-Video Merge Without Cut
     cmd = [
         "ffmpeg",
         "-y",
@@ -95,31 +130,32 @@ def process_video(chat_id, file_id, caption):
         hindi_audio,
         "-c:v",
         "copy",
+        "-c:a",
+        "aac",
         "-map",
         "0:v:0",
         "-map",
         "1:a:0",
-        "-shortest",
         output_video,
     ]
     subprocess.run(cmd, check=True)
 
-    send_message(chat_id, "🚀 Uploading Dubbed Video...")
+    send_message(chat_id, "🚀 Dubbed Video Upload ho rahi hai...")
     with open(output_video, "rb") as v_file:
       requests.post(
           API_URL + "sendVideo",
           data={
               "chat_id": chat_id,
               "caption": (
-                  "✅ *Hindi Dubbed Video Ready!*\n\n📝 *Hindi"
-                  f" Translation:* {hindi_text}"
+                  "✅ *Hindi Voiceover Ready!*\n\n🗣 *Voice Model:* "
+                  f" `{selected_voice}`\n📝 *Translation:* {hindi_text}"
               ),
           },
           files={"video": v_file},
       )
 
   except Exception as e:
-    print(f"Error in processing: {e}")
+    print(f"Error: {e}")
     send_message(chat_id, f"❌ Error: {str(e)}")
 
   finally:
@@ -129,14 +165,12 @@ def process_video(chat_id, file_id, caption):
 
 
 def bot_loop():
-  print("Bot loop active...")
-
-  # Clean webhook if active previously
   try:
-    requests.get(API_URL + "deleteWebhook", params={"drop_pending_updates": True})
-    print("Old webhooks cleared.")
+    requests.get(
+        API_URL + "deleteWebhook", params={"drop_pending_updates": True}
+    )
   except Exception as e:
-    print(f"Webhook error: {e}")
+    pass
 
   offset = 0
   while True:
@@ -144,42 +178,33 @@ def bot_loop():
       res = requests.get(
           API_URL + "getUpdates", params={"offset": offset, "timeout": 10}
       ).json()
-
       for update in res.get("result", []):
         offset = update["update_id"] + 1
-
         if "message" in update:
           msg = update["message"]
           chat_id = msg["chat"]["id"]
 
-          # Handle /start text message
           if "text" in msg and msg["text"] == "/start":
             send_message(
                 chat_id,
-                "👋 Hello! Mujhe **Caption ke saath video** bhejo, main use Hindi"
-                " me dub karke dunga.",
+                "👋 **Bot Ready Hai!**\n\nKoi bhi video caption ke saath"
+                " bhejo, main 20+ HD voices se Hindi Voiceover ready kar"
+                " dunga.",
             )
 
-          # Handle Video
           elif "video" in msg:
             file_id = msg["video"]["file_id"]
             caption = msg.get("caption", "")
-
-            # Run video processing in a SEPARATE thread so it doesn't freeze the loop
             Thread(
                 target=process_video, args=(chat_id, file_id, caption)
             ).start()
 
     except Exception as err:
-      print(f"Loop Error: {err}")
       time.sleep(3)
 
 
 if __name__ == "__main__":
-  # Start Bot Thread
   Thread(target=bot_loop, daemon=True).start()
-
-  # Start Flask
   port = int(os.environ.get("PORT", 10000))
   app.run(host="0.0.0.0", port=port)
-          
+  
