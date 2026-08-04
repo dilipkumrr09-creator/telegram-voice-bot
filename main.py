@@ -3,10 +3,19 @@ import time
 import subprocess
 import requests
 import asyncio
+from threading import Thread
+from flask import Flask
 from deep_translator import GoogleTranslator
 import edge_tts
 
-# Apni Telegram Bot Token Yahan
+# Dummy Web Server (Render Free Tier port binding ke liye)
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running 24/7!"
+
+# Telegram Bot Token
 TOKEN = "8966768712:AAGPEtTSXQJqjcffWal6GjtiwfmjuY6uAo"
 API_URL = f"https://api.telegram.org/bot{TOKEN}/"
 
@@ -16,7 +25,6 @@ def send_message(chat_id, text):
 def process_video(chat_id, file_id, caption):
     send_message(chat_id, "📥 Video receive ho gayi... Processing shuru ho rahi hai!")
     
-    # Get File Path
     file_info = requests.get(API_URL + "getFile", params={"file_id": file_id}).json()
     file_path = file_info["result"]["file_path"]
     download_url = f"https://api.telegram.org/file/bot{TOKEN}/{file_path}"
@@ -26,25 +34,21 @@ def process_video(chat_id, file_id, caption):
     output_video = f"dubbed_{chat_id}.mp4"
 
     try:
-        # 1. Download Video
         send_message(chat_id, "⚙️ Step 1/3: Video Download ho rahi hai...")
         video_bytes = requests.get(download_url).content
         with open(input_video, "wb") as f:
             f.write(video_bytes)
 
-        # 2. English Caption to Hindi Translation
         send_message(chat_id, "🌐 Step 2/3: Hindi Translation & Voice generate ho rahi hai...")
         text_to_translate = caption if caption else "Hello, welcome to this video!"
         
         hindi_text = GoogleTranslator(source='auto', target='hi').translate(text_to_translate)
 
-        # 3. Hindi Audio Generation (Swara Voice)
         async def make_tts():
             communicate = edge_tts.Communicate(text=hindi_text, voice="hi-IN-SwaraNeural")
             await communicate.save(hindi_audio)
         asyncio.run(make_tts())
 
-        # 4. Merge Audio & Video using FFmpeg
         send_message(chat_id, "🎞 Step 3/3: Video aur Hindi Audio Merge ho rahe hain...")
         cmd = [
             "ffmpeg", "-y",
@@ -57,7 +61,6 @@ def process_video(chat_id, file_id, caption):
         ]
         subprocess.run(cmd, check=True)
 
-        # 5. Send Dubbed Video
         send_message(chat_id, "🚀 Uploading Dubbed Video...")
         with open(output_video, 'rb') as v_file:
             requests.post(
@@ -74,9 +77,8 @@ def process_video(chat_id, file_id, caption):
             if os.path.exists(f):
                 os.remove(f)
 
-# Main Polling Loop
-def main():
-    print("Bot chalu ho gaya hai...")
+def bot_loop():
+    print("Bot loop active...")
     offset = 0
     while True:
         try:
@@ -93,5 +95,10 @@ def main():
             time.sleep(3)
 
 if __name__ == "__main__":
-    main()
+    # Bot loop ko alag thread me start karenge
+    Thread(target=bot_loop, daemon=True).start()
+    
+    # Main thread par Flask server chalega taaki Render port detect kar sake
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
     
