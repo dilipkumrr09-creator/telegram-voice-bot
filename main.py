@@ -1,3 +1,9 @@
+import static_ffmpeg
+
+# Automatic FFmpeg binary setup for Render
+static_ffmpeg.add_paths()
+
+# Baaki aapka Telegram Bot + Flask application code...
 import asyncio
 import os
 import random
