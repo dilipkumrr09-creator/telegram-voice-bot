@@ -2,3 +2,4 @@ flask
 requests
 deep-translator
 edge-tts
+static-ffmpeg
