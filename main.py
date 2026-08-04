@@ -213,4 +213,44 @@ if __name__ == "__main__":
   Thread(target=bot_loop, daemon=True).start()
   port = int(os.environ.get("PORT", 10000))
   app.run(host="0.0.0.0", port=port)
+  import os
+import threading
+from flask import Flask
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
+
+# 1. Background Web Server for Render Keep-Alive
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def health_check():
+    return "Bot is active!", 200
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 8080))
+    flask_app.run(host="0.0.0.0", port=port)
+
+# 2. Main Telegram Bot Execution
+def main():
+    # Flask ko alag thread me start karein
+    threading.Thread(target=run_web_server, daemon=True).start()
+
+    # Environment variable se naya token lein
+    bot_token = os.environ.get("BOT_TOKEN")
+    if not bot_token:
+        print("ERROR: BOT_TOKEN Environment Variable nahi mila!")
+        return
+
+    # Application build karein
+    app = Application.builder().token(bot_token).build()
+
+    # Handlers add karein (Jaise start, video processing, etc.)
+    # app.add_handler(CommandHandler("start", start_handler))
+    # app.add_handler(MessageHandler(filters.VIDEO, video_handler))
+
+    # Bot Polling Start
+    print("Bot is listening for messages...")
+    app.run_polling(drop_pending_updates=True)
+
+if __name__ == "__main__":
+    main()
   
